@@ -7,8 +7,12 @@ Original file is located at
     https://colab.research.google.com/drive/141Ou3vUzMwYGOHEgzo4DlnDSX_NJWgGD
 """
 
-import csv
 import pandas as pd
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+import spacy
+from spacy import displacy
 
 # Load financial data from CSV file
 df = pd.read_csv('Financial_Data.csv')
@@ -76,6 +80,50 @@ def get_profit_margin(df, company):
     profit_margin = (net_income / revenue) * 100
     return f"The profit margin for {company} is {profit_margin:.2f}%."
 
+# # Chatbot loop
+# while True:
+#     user_input = input("Enter your query: ")
+#     company = input("Enter the company name: ")
+#     if user_input in queries:
+#         print(queries[user_input](company))
+#     else:
+#         print("Sorry, I didn't understand your query. Please try again!")
+
+# Load spaCy model for NLP
+nlp = spacy.load("en_core_web_sm")
+
+# Define NLP-based query parser
+def parse_query(query):
+    doc = nlp(query)
+    entities = [(entity.text, entity.label_) for entity in doc.ents]
+    keywords = [token.lemma_ for token in doc if token.pos_ in ["NOUN", "VERB"]]
+    return entities, keywords
+
+# Define function to generate response based on parsed query
+def generate_response(entities, keywords, company):
+    if "revenue" in keywords:
+        return f"The total revenue for {company} is ${df.loc[df['Company'] == company, 'Revenue'].values[0]}."
+    elif "net income" in keywords:
+        return f"The net income for {company} is ${df.loc[df['Company'] == company, 'Net_income'].values[0]}."
+    elif "assets" in keywords:
+        return f"The total assets for {company} are ${df.loc[df['Company'] == company, 'total_assets'].values[0]}."
+    elif "liabilities" in keywords:
+        return f"The total liabilities for {company} are ${df.loc[df['Company'] == company, 'total_lib'].values[0]}."
+    elif "cash flow" in keywords:
+        return f"The operating cash flow for {company} is ${df.loc[df['Company'] == company, 'cashflow_operating'].values[0]}."
+    elif "debt-to-equity" in keywords:
+        return get_debt_to_equity_ratio(df, company)
+    elif "ROA" in keywords:
+        return get_roa(df, company)
+    elif "ROE" in keywords:
+        return get_roe(df, company)
+    elif "current ratio" in keywords:
+        return get_current_ratio(df, company)
+    elif "profit" in keywords or "margin" in keywords:
+        return get_profit_margin(df, company)
+    else:
+        return "Sorry, I didn't understand your query. Please try again!"
+
 # Chatbot loop
 while True:
     user_input = input("Enter your query: ")
@@ -83,60 +131,8 @@ while True:
     if user_input in queries:
         print(queries[user_input](company))
     else:
-        print("Sorry, I didn't understand your query. Please try again!")
-
-# import pandas as pd
-# import numpy as np
-# import transformers
-# # The accuracy_score function is not suitable for this task and has been removed
-# # from sklearn.metrics import accuracy_score
-
-# # Load financial data from CSV file
-# df = pd.read_csv('Financial_Data.csv')
-
-# # Define predefined queries and responses
-# queries = {
-#     "What is the total revenue?": lambda company: f"The total revenue for {company} is ${df.loc[df['Company'] == company, 'Revenue'].values[0]}.",
-#     "What is the net income?": lambda company: f"The net income for {company} is ${df.loc[df['Company'] == company, 'Net_income'].values[0]}.",
-#     "What are the total assets?": lambda company: f"The total assets for {company} are ${df.loc[df['Company'] == company, 'total_assets'].values[0]}.",
-#     "What are the total liabilities?": lambda company: f"The total liabilities for {company} are ${df.loc[df['Company'] == company, 'total_lib'].values[0]}.",
-#     "What is the operating cash flow?": lambda company: f"The operating cash flow for {company} is ${df.loc[df['Company'] == company, 'cashflow_operting'].values[0]}."
-# }
-
-# # Removed the calculate_accuracy function as it is not applicable here
-
-# # Define a function to generate responses using NLP and Machine Learning
-# def generate_response(query, company):
-#     nlp = transformers.pipeline("conversational", model="microsoft/DialoGPT-medium")
-#     chat = nlp(transformers.Conversation(query), pad_token_id=50256)
-#     response = str(chat)
-#     response = response[response.find("bot >> ")+6:].strip()
-#     return response
-
-# # Define a function to check if the response is related to the question
-# def is_response_related(query, response):
-#     # Use a simple keyword matching approach for demonstration purposes
-#     keywords = ["revenue", "income", "assets", "liabilities", "cash flow"]
-#     if any(keyword in query.lower() for keyword in keywords) and any(keyword in response.lower() for keyword in keywords):
-#         return True
-#     return False
-
-# # Chatbot loop
-# while True:
-#     user_input = input("Enter your query: ")
-#     company = input("Enter the company name: ")
-#     if user_input in queries:
-#         response = queries[user_input](company)
-#     else:
-#         response = generate_response(user_input, company)
-
-#     # Removed accuracy calculation and print statements
-
-#     # Check if the response is related to the question
-#     if is_response_related(user_input, response):
-#         print("Response is related to the question.")
-#     else:
-#         print("Response is not related to the question.")
-
-#     print(response)
-
+        entities, keywords = parse_query(user_input)
+        print(entities)
+        print(keywords)
+        response = generate_response(entities, keywords, company)
+        print(response)
